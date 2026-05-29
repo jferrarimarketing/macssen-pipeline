@@ -343,7 +343,7 @@ async function loadDeals() {
     deals = deals.map(d => ({
       ...d,
       actividades: d.actividades || [],
-      tipoObra: d.tipo_obra,
+      tipoObra: d.tipo_servicio,
       fechaAlta: d.fecha_alta,
       fechaCierre: d.fecha_cierre
     }));
@@ -393,7 +393,7 @@ function renderPipeline() {
   const ft = g('f-tipo').value;
   const fil = deals.filter(d =>
     (!q  || (d.empresa||'').toLowerCase().includes(q) || (d.proyecto||'').toLowerCase().includes(q)) &&
-    (!fv || d.vendedor===fv) && (!ft || (d.tipoObra||d.tipo_obra)===ft)
+    (!fv || d.vendedor===fv) && (!ft || (d.tipoObra||d.tipo_servicio)===ft)
   );
   const act = fil.filter(d=>d.etapa!=='ganado'&&d.etapa!=='perdido');
   const gan = fil.filter(d=>d.etapa==='ganado');
@@ -404,7 +404,7 @@ function renderPipeline() {
   g('s-cerrado').textContent = gan.length+' deals';
   g('s-cerrado-m').textContent = gan.length ? '$'+fmt(valG)+' facturado' : '—';
   const tSel = g('f-tipo').value;
-  const tipos = [...new Set(deals.map(d=>d.tipoObra||d.tipo_obra).filter(Boolean))].sort();
+  const tipos = [...new Set(deals.map(d=>d.tipoObra||d.tipo_servicio).filter(Boolean))].sort();
   g('f-tipo').innerHTML = '<option value="">Todos los tipos</option>' + tipos.map(t=>`<option value="${t}"${t===tSel?' selected':''}>${t}</option>`).join('');
   const pipe = g('pipeline');
   pipe.innerHTML = '';
@@ -427,7 +427,7 @@ function dealHTML(d) {
   const u    = USERS.find(x=>x.id===d.vendedor);
   const acts = Array.isArray(d.actividades) ? d.actividades : [];
   const last = acts.slice(-1)[0]||null;
-  const tipo = d.tipoObra||d.tipo_obra||'';
+  const tipo = d.tipoObra||d.tipo_servicio||'';
   const fc   = d.fechaCierre||d.fecha_cierre||'';
   const opts = STAGES.map(s=>`<option value="${s.id}"${s.id===d.etapa?' selected':''}>${s.label}</option>`).join('');
   return `<div class="deal-card">
@@ -472,7 +472,7 @@ function openEdit(id){
   const d=deals.find(x=>x.id===id); if(!d)return;
   g('m-id').value=id; g('m-deal-title').textContent='Editar negocio';
   g('m-empresa').value=d.empresa||''; g('m-proyecto').value=d.proyecto||'';
-  g('m-tipo').value=d.tipoObra||d.tipo_obra||''; g('m-monto').value=d.monto||'';
+  g('m-tipo').value=d.tipoObra||d.tipo_servicio||''; g('m-monto').value=d.monto||'';
   g('m-falta').value=d.fechaAlta||d.fecha_alta||''; g('m-fcierre').value=d.fechaCierre||d.fecha_cierre||'';
   g('m-contacto').value=d.contacto||''; g('m-cargo').value=d.cargo||'';
   g('m-email').value=d.email||''; g('m-celular').value=d.celular||'';
@@ -487,7 +487,7 @@ async function saveD(){
   setSyncDot('syncing');
   const data={
     empresa, proyecto:g('m-proyecto').value.trim(),
-    tipo_obra:g('m-tipo').value, monto:g('m-monto').value||null,
+    tipo_servicio:g('m-tipo').value, monto:g('m-monto').value||null,
     fecha_alta:g('m-falta').value||null, fecha_cierre:g('m-fcierre').value||null,
     contacto:g('m-contacto').value.trim(), cargo:g('m-cargo').value.trim(),
     email:g('m-email').value.trim(), celular:g('m-celular').value.trim(),
@@ -544,7 +544,7 @@ function sendEmails(deal,act,recipients){
   const ul=USERS.find(u=>u.id===deal.vendedor)?.nombre||'—';
   const al=(ACT[act.tipo]||act.tipo).replace(/^\S+\s/,'');
   const subj=`[Macssen Pipeline] ${al} — ${deal.empresa}`;
-  const body=['Actividad agendada en el Pipeline de Macssen','',`Empresa:   ${deal.empresa}`,`Proyecto:  ${deal.proyecto||'—'}`,`Tipo obra: ${deal.tipoObra||deal.tipo_obra||'—'}`,`Etapa:     ${sl}`,`Vendedor:  ${ul}`,'',`Actividad: ${ACT[act.tipo]||act.tipo}`,`Fecha:     ${fmtDate(act.fecha)}${act.hora?' a las '+act.hora:''}`,`Nota:      ${act.nota||'—'}`,'',`Contacto:  ${deal.contacto||'—'}${deal.cargo?' ('+deal.cargo+')':''}`,`Email:     ${deal.email||'—'}`,`Celular:   ${deal.celular||'—'}`,'','---','Pipeline · Macssen'].join('\n');
+  const body=['Actividad agendada en el Pipeline de Macssen','',`Empresa:   ${deal.empresa}`,`Proyecto:  ${deal.proyecto||'—'}`,`Tipo obra: ${deal.tipoObra||deal.tipo_servicio||'—'}`,`Etapa:     ${sl}`,`Vendedor:  ${ul}`,'',`Actividad: ${ACT[act.tipo]||act.tipo}`,`Fecha:     ${fmtDate(act.fecha)}${act.hora?' a las '+act.hora:''}`,`Nota:      ${act.nota||'—'}`,'',`Contacto:  ${deal.contacto||'—'}${deal.cargo?' ('+deal.cargo+')':''}`,`Email:     ${deal.email||'—'}`,`Celular:   ${deal.celular||'—'}`,'','---','Pipeline · Macssen'].join('\n');
   window.open(`mailto:${recipients.join(',')}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`,'_blank');
   toast(`✉️ Mail preparado para ${recipients.length} destinatario${recipients.length>1?'s':''}`);
 }
@@ -573,7 +573,7 @@ function renderDashboard(){
   const now=new Date();
   const meses=Array.from({length:12},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-11+i,1);return{key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,label:MONTHS[d.getMonth()]};});
   dc('chart-mensual');charts['chart-mensual']=new Chart(g('chart-mensual'),{type:'bar',data:{labels:meses.map(m=>m.label),datasets:[{label:'Negocios',data:meses.map(m=>deals.filter(d=>(d.fechaAlta||d.fecha_alta||'').startsWith(m.key)).length),backgroundColor:'rgba(192,57,43,0.15)',borderColor:'#c0392b',borderWidth:2,borderRadius:4,yAxisID:'y'},{label:'Valor (AR$)',data:meses.map(m=>deals.filter(d=>(d.fechaAlta||d.fecha_alta||'').startsWith(m.key)).reduce((s,d)=>s+(+d.monto||0),0)),type:'line',borderColor:'#1e8449',backgroundColor:'rgba(30,132,73,0.08)',tension:.4,pointRadius:3,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{y:{position:'left',grid:{color:'#f0f0f0'},ticks:{font:{size:11}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:11},callback:v=>'$'+fmt(v)}}},plugins:{legend:{labels:{font:{size:11}}}}}});
-  const tipoMap={};fil.forEach(d=>{const t=d.tipoObra||d.tipo_obra;if(t){tipoMap[t]=(tipoMap[t]||0)+(+d.monto||0);}});
+  const tipoMap={};fil.forEach(d=>{const t=d.tipoObra||d.tipo_servicio;if(t){tipoMap[t]=(tipoMap[t]||0)+(+d.monto||0);}});
   const tKeys=Object.keys(tipoMap).sort((a,b)=>tipoMap[b]-tipoMap[a]);
   dc('chart-tipo');charts['chart-tipo']=new Chart(g('chart-tipo'),{type:'bar',data:{labels:tKeys.length?tKeys:['Sin datos'],datasets:[{label:'Valor AR$',data:tKeys.length?tKeys.map(k=>tipoMap[k]):[0],backgroundColor:['#c0392b','#2980b9','#1e8449','#d35400','#8e44ad'],borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'$'+fmt(v),font:{size:10}},grid:{color:'#f0f0f0'}},y:{ticks:{font:{size:11}}}}}});
   const vendMap={};fil.forEach(d=>{const uid=d.vendedor||'x';if(!vendMap[uid])vendMap[uid]={monto:0,count:0,ganados:0};vendMap[uid].monto+=(+d.monto||0);vendMap[uid].count++;if(d.etapa==='ganado')vendMap[uid].ganados++;});
